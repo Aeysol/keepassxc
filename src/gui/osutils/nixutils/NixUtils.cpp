@@ -28,6 +28,7 @@
 #include <QPointer>
 #include <QRandomGenerator>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QStyle>
 #include <QTextStream>
 #ifdef WITH_XC_X11
@@ -378,4 +379,6 @@ void NixUtils::setColorScheme(QDBusVariant value)
     m_systemColorschemePref = static_cast<ColorschemePref>(value.variant().toInt());
     m_systemColorschemePrefExists = true;
     emit interfaceThemeChanged();
+    // Emit with delay, since isStatusBarDark() may not return the updated value immediately
+    QTimer::singleShot(100, this, [this]() { emit statusbarThemeChanged(); });
 }
