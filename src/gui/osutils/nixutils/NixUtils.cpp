@@ -22,6 +22,7 @@
 #include "core/Global.h"
 
 #include <QApplication>
+#include <QDBusArgument>
 #include <QDBusInterface>
 #include <QDebug>
 #include <QDir>
@@ -85,7 +86,13 @@ NixUtils::NixUtils(QObject* parent)
     QDBusMessage msg = QDBusMessage::createMethodCall(
         "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop", "org.freedesktop.portal.Settings", "Read");
     msg << QVariant("org.freedesktop.appearance") << QVariant("color-scheme");
-    sessionBus.callWithCallback(msg, this, SLOT(handleColorSchemeRead(QDBusVariant)));
+    QDBusMessage reply = sessionBus.call(msg, QDBus::Block, 500);
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        auto outer = qdbus_cast<QDBusVariant>(reply.arguments().at(0));
+        auto inner = qvariant_cast<QDBusVariant>(outer.variant());
+        m_systemColorschemePref = static_cast<ColorschemePref>(inner.variant().toInt());
+        m_systemColorschemePrefExists = true;
+    }
 }
 
 NixUtils::~NixUtils()
