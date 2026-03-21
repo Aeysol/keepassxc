@@ -103,7 +103,17 @@ QIcon Icons::trayIcon(bool unlocked)
 #elif defined(Q_OS_MACOS)
     i = icon(QString("keepassxc-monochrome-light%1").arg(suffix), false);
 #else
-    i = icon(QString("%1-%2%3").arg(applicationIconName(), iconApperance, suffix), false);
+    if (iconApperance == "monochrome") {
+        // Auto-detect based on system theme, matching Windows behavior
+        if (osUtils->isStatusBarDark()) {
+            i = icon(QString("%1-monochrome-light%2").arg(applicationIconName(), suffix), false);
+        } else {
+            i = icon(QString("%1-monochrome-dark%2").arg(applicationIconName(), suffix), false);
+        }
+    } else {
+        // User explicitly selected monochrome-light or monochrome-dark
+        i = icon(QString("%1-%2%3").arg(applicationIconName(), iconApperance, suffix), false);
+    }
 #endif
     // Set as mask to allow the operating system to recolour the tray icon. This may look weird
     // if we failed to detect the status bar background colour correctly, but it is certainly

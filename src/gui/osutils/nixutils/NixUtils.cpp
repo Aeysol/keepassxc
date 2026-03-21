@@ -22,12 +22,14 @@
 #include "core/Global.h"
 
 #include <QApplication>
+#include <QDBusArgument>
 #include <QDBusInterface>
 #include <QDebug>
 #include <QDir>
 #include <QPointer>
 #include <QRandomGenerator>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QStyle>
 #include <QTextStream>
 #ifdef WITH_XC_X11
@@ -84,7 +86,13 @@ NixUtils::NixUtils(QObject* parent)
     QDBusMessage msg = QDBusMessage::createMethodCall(
         "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop", "org.freedesktop.portal.Settings", "Read");
     msg << QVariant("org.freedesktop.appearance") << QVariant("color-scheme");
-    sessionBus.callWithCallback(msg, this, SLOT(handleColorSchemeRead(QDBusVariant)));
+    QDBusMessage reply = sessionBus.call(msg, QDBus::Block, 500);
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        auto outer = qdbus_cast<QDBusVariant>(reply.arguments().at(0));
+        auto inner = qvariant_cast<QDBusVariant>(outer.variant());
+        m_systemColorschemePref = static_cast<ColorschemePref>(inner.variant().toInt());
+        m_systemColorschemePrefExists = true;
+    }
 }
 
 NixUtils::~NixUtils()
@@ -378,4 +386,6 @@ void NixUtils::setColorScheme(QDBusVariant value)
     m_systemColorschemePref = static_cast<ColorschemePref>(value.variant().toInt());
     m_systemColorschemePrefExists = true;
     emit interfaceThemeChanged();
+    // Emit with delay, since isStatusBarDark() may not return the updated value immediately
+    QTimer::singleShot(100, this, [this]() { emit statusbarThemeChanged(); });
 }
